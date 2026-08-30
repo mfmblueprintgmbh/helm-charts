@@ -17,4 +17,17 @@ entries:
     urls:
     - https://github.com/mfmblueprintgmbh/helm-charts/releases/download/kube-cost-metrics-collector-0.1.5/kube-cost-metrics-collector-0.1.5.tgz
     version: 0.1.5
-generated: "2026-08-30T11:55:13.29250204Z"
+  kube-service-selectors:
+  - apiVersion: v2
+    created: "2026-08-30T12:02:00.333817998Z"
+    description: Exports Kubernetes service selectors as Prometheus metrics.
+    digest: fce25088660602a118ab5f575b5e94cb9772e10c16020e0e2927b916b495e5ea
+    maintainers:
+    - email: dev@bluebill.io
+      name: Bluebill
+    name: kube-service-selectors
+    type: application
+    urls:
+    - https://github.com/mfmblueprintgmbh/helm-charts/releases/download/kube-service-selectors-1.0.3/kube-service-selectors-1.0.3.tgz
+    version: 1.0.3
+generated: "2026-08-30T12:02:00.333828127Z"
