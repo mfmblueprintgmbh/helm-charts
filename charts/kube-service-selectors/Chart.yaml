@@ -1,7 +1,7 @@
 apiVersion: v2
 name: kube-service-selectors
 type: application
-version: 1.0.2
+version: 1.0.3
 description: Exports Kubernetes service selectors as Prometheus metrics.
 maintainers:
   - name: Bluebill
