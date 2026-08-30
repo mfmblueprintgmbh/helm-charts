@@ -40,7 +40,7 @@ prometheus:
     # Platform target skeleton. The entry named "bluebill" is the one the chart
     # injects auth headers into. Do not rename it without also updating
     # templates/_helpers.tpl and templates/prometheus-server-cm.yaml.
-    - url: https://ai.bluebill.io/storage/api/v2/write
+    - url: https://app.bluebill.io/storage/api/v2/write
       name: bluebill
 
     # Data source id shown in the platform after the Kubernetes data source is created
