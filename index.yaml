@@ -2,6 +2,22 @@ apiVersion: v1
 entries:
   kube-cost-metrics-collector:
   - apiVersion: v2
+    created: "2026-08-30T12:08:32.082371653Z"
+    dependencies:
+    - name: prometheus
+      repository: https://prometheus-community.github.io/helm-charts
+      version: 17.0.2
+    description: Kubernetes cost metrics collector.
+    digest: 50091036d90237915cd83f5fe6ff4781b3d804dc1b9f0a4a87706d2658a4dfb7
+    maintainers:
+    - email: dev@bluebill.io
+      name: Bluebill
+    name: kube-cost-metrics-collector
+    type: application
+    urls:
+    - https://github.com/mfmblueprintgmbh/helm-charts/releases/download/kube-cost-metrics-collector-0.1.6/kube-cost-metrics-collector-0.1.6.tgz
+    version: 0.1.6
+  - apiVersion: v2
     created: "2026-08-30T11:55:13.292496161Z"
     dependencies:
     - name: prometheus
@@ -30,4 +46,4 @@ entries:
     urls:
     - https://github.com/mfmblueprintgmbh/helm-charts/releases/download/kube-service-selectors-1.0.3/kube-service-selectors-1.0.3.tgz
     version: 1.0.3
-generated: "2026-08-30T12:02:00.333828127Z"
+generated: "2026-08-30T12:08:32.082381221Z"
