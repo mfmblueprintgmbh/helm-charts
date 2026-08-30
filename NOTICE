@@ -1,0 +1,19 @@
+Bluebill Helm charts
+Copyright 2026 MFM Blueprint GmbH
+
+Licensed under the Apache License, Version 2.0. See LICENSE for the full text.
+
+Third party components
+----------------------
+
+These charts declare dependencies on software published by third parties under their
+own licences. Those components are fetched at build time and are redistributed inside
+the packaged chart archive together with their own licence files:
+
+- Prometheus Helm chart, prometheus-community, Apache License 2.0
+- kube-state-metrics, prometheus-community, Apache License 2.0
+- Prometheus node exporter, prometheus-community, Apache License 2.0
+- Prometheus pushgateway, prometheus-community, Apache License 2.0
+
+Container images referenced by these charts are distributed under the licences of
+their respective publishers.

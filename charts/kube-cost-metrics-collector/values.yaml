@@ -1,0 +1,82 @@
+prometheus:
+  kube-state-metrics:
+    releaseLabel: true
+    metricLabelsAllowlist:
+      - endpoints=[*]
+      - jobs=[*]
+      - namespaces=[*]
+      - nodes=[*]
+      - pods=[*]
+      - services=[*]
+    metricAnnotationsAllowList:
+      - endpoints=[*]
+      - jobs=[*]
+      - namespaces=[*]
+      - nodes=[*]
+      - pods=[*]
+      - services=[*]
+
+  serviceAccounts:
+    alertmanager:
+      create: false
+
+  kubeStateMetrics:
+    enabled: true
+
+  prometheus-node-exporter:
+    enabled: true
+    hostNetwork: false
+
+  prometheus-pushgateway:
+    enabled: true
+    persistentVolume:
+      enabled: false
+
+  alertmanager:
+    enabled: false
+
+  server:
+    remote_write:
+    # Platform target skeleton. The entry named "bluebill" is the one the chart
+    # injects auth headers into. Do not rename it without also updating
+    # templates/_helpers.tpl and templates/prometheus-server-cm.yaml.
+    - url: https://ai.bluebill.io/storage/api/v2/write
+      name: bluebill
+
+    # Data source id shown in the platform after the Kubernetes data source is created
+    dataSourceId: null
+    # Username entered when the Kubernetes data source was created
+    username: null
+    # Password entered when the Kubernetes data source was created
+    password: null
+    # CA certificate file for the remote write target. Leave empty only if the
+    # target uses a certificate the cluster already trusts; see README.
+    caFile:
+
+    configMapOverrideName: prometheus-server-config
+    persistentVolume:
+      enabled: false
+    defaultFlagsOverride:
+    - --enable-feature=agent
+    - --config.file=/etc/config/prometheus.yml
+    - --web.enable-lifecycle
+    extraConfigmapMounts:
+    - name: cert-config
+      mountPath: /etc/bluebill/ssl
+      configMap: prometheus-server-cert-config
+      subPath: ""
+      readOnly: true
+    extraSecretMounts:
+    - name: password-secret
+      mountPath: /etc/bluebill/auth
+      subPath: ""
+      secretName: prometheus-server-password-secret
+      readOnly: true
+  serverFiles:
+    prometheus.yml:
+      rule_files: []
+
+kube-service-selectors:
+  image:
+    repository: ghcr.io/mfmblueprintgmbh/kube-service-selectors
+    tag: "0.1.0"
