@@ -1,106 +1,112 @@
-Kubernetes cost metrics collector
-====
+# Connecting a Kubernetes cluster to bluebill
 
-Ready to deploy set of components for Kubernetes cost management and FinOps in Bluebill.
+## What gets installed
 
-Components
-- [Prometheus](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus), running in agent mode
-  - [kube-state-metrics](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-state-metrics)
-  - [prometheus-node-exporter](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-node-exporter)
-  - [prometheus-pushgateway](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus-pushgateway)
-- kube-service-selectors
+One Helm release in your cluster, containing Prometheus in agent mode, kube-state-metrics,
+a node exporter, a pushgateway and a small exporter that maps services to their selectors.
 
-Prometheus runs with `--enable-feature=agent` and no local persistent volume, so nothing is
-stored in the cluster. Samples are streamed out over `remote_write` to Bluebill.
+Prometheus runs without local storage: it scrapes resource usage metrics and streams them
+straight out to bluebill over HTTPS. Nothing is stored inside your cluster and no inbound
+connection is required, only outbound HTTPS.
 
-## Prerequisites
-- Kubernetes 1.17+
-- Helm 3+
-- Outbound HTTPS from the cluster to the Bluebill endpoint
-- A Kubernetes data source created in Bluebill, which yields a data source id, a username and a password
+Install one release per cluster.
 
-## Installation
+## Requirements
 
-One release per cluster.
+- Kubernetes 1.17 or later
+- Helm 3
+- Cluster admin rights for the install, since the chart creates a ClusterRole
+- Outbound HTTPS from the cluster to `https://app.bluebill.io`
+- Roughly 1 vCPU and 2 GB of memory of headroom across the cluster, mostly for the Prometheus agent
+
+## Step 1: create the data source
+
+In bluebill, go to Data Sources and add a Kubernetes source. You will be asked for a name, a
+user and a password. Choose these yourself; they are credentials the cluster will use to push
+metrics, not an account login. On save you receive a **data source id**. Keep the id, the
+user and the password to hand for step 3.
+
+## Step 2: add the chart repository
 
 ```bash
 helm repo add bluebill https://mfmblueprintgmbh.github.io/helm-charts
 helm repo update
-
-helm install kube-cost-metrics-collector bluebill/kube-cost-metrics-collector \
-  --namespace bluebill \
-  --create-namespace \
-  --values values.local.yaml
 ```
 
-with `values.local.yaml`:
+## Step 3: install
+
+Create a file called `bluebill-values.yaml`:
 
 ```yaml
 prometheus:
   server:
-    dataSourceId: <data-source-id>
-    username: <username>
-    password: <password>
+    dataSourceId: "<data-source-id>"
+    username: "<user>"
+    password: "<password>"
 ```
 
-Passing the password with `--set` puts it into shell history and into the CI logs of
-whoever runs it. A values file that is deleted afterwards is the better habit. The password
-is stored in the cluster as a Kubernetes Secret either way.
+Keep the quotation marks. Without them a purely numeric password is interpreted as a number,
+which causes the endpoint to reject the connection.
 
-## Upgrade
+Then:
 
 ```bash
-helm repo update
-helm upgrade kube-cost-metrics-collector bluebill/kube-cost-metrics-collector \
+helm install kube-cost-metrics-collector bluebill/kube-cost-metrics-collector \
   --namespace bluebill \
-  --reuse-values
+  --create-namespace \
+  --values bluebill-values.yaml
 ```
 
-## Configuration
+Delete `bluebill-values.yaml` afterwards, or keep it in whatever secret store you already
+use. The password is written into a Kubernetes Secret in the `bluebill` namespace as part of
+the install.
 
-| Parameter | Description |
-| --------- | ----------- |
-| `prometheus.server.dataSourceId` | Kubernetes data source id from Bluebill |
-| `prometheus.server.username` | Username set when the data source was created |
-| `prometheus.server.password` | Password set when the data source was created |
-| `prometheus.server.remote_write[0].url` | Ingest endpoint. Defaults to the Bluebill production endpoint |
-| `prometheus.server.caFile` | CA certificate for the ingest endpoint. See TLS below |
-| `prometheus.kubeStateMetrics.enabled` | Set to false if kube-state-metrics already runs in the cluster |
-| `prometheus.prometheus-node-exporter.enabled` | Set to false if a node exporter already runs in the cluster |
-| `prometheus.prometheus-pushgateway.enabled` | Set to false if a pushgateway already runs in the cluster |
-
-Everything else is in [values.yaml](values.yaml), or run:
-
-```bash
-helm show values bluebill/kube-cost-metrics-collector
-```
-
-### The remote_write entry named `bluebill`
-
-The templates look for the `remote_write` entry whose `name` is `bluebill` and inject the
-basic auth block and the `Cloud-Account-Id` header into that entry only. Renaming it in
-`values.yaml` without also editing `templates/_helpers.tpl` and
-`templates/prometheus-server-cm.yaml` produces a chart that installs cleanly and then fails
-authentication at runtime with no obvious cause. Additional `remote_write` targets can be
-added freely under other names; they are passed through untouched.
-
-### TLS
-
-If `caFile` is not set, the chart configures `insecure_skip_verify: true` on the remote
-write target. That works, but it means the agent will accept any certificate presented by
-anything answering on that hostname. When the endpoint has a certificate from a public CA,
-set `caFile` to the CA bundle so verification is on. When the endpoint is reached over plain
-HTTP or by bare IP, remote write fails; the endpoint needs a real hostname and certificate.
-
-## Verification
-
-After install:
+## Step 4: check it is working
 
 ```bash
 kubectl -n bluebill get pods
-kubectl -n bluebill logs deploy/kube-cost-metrics-collector-prometheus-server -f | grep remote
 ```
 
-Healthy output is quiet. Repeated `Failed to send batch, retrying` lines mean the endpoint,
-the certificate or the credentials are wrong. Metrics take roughly an hour to appear in the
-interface, so do not treat an empty first view as a failure.
+All pods should reach Running. Then:
+
+```bash
+kubectl -n bluebill logs deploy/kube-cost-metrics-collector-prometheus-server -c prometheus-server --tail=20
+```
+
+A healthy agent produces no output here. Repeated errors mean the endpoint, the certificate
+or the credentials need checking, see the table below.
+
+Metrics take about an hour to appear in the interface, so the cluster will look empty at
+first even when everything is correct.
+
+## If metrics do not arrive
+
+| Symptom in the Prometheus agent log | Cause |
+| ----------------------------------- | ----- |
+| `401 Unauthorized` on remote write | The user or password does not match the data source, or the values file is missing quotation marks around a numeric password |
+| `500 ... TSDB not ready` | Normal for the first minute or two after a fresh data source. It clears on its own |
+| `server gave HTTP response to HTTPS client` | The endpoint is being reached over plain HTTP. Use the HTTPS hostname, not an IP address |
+| `x509: certificate signed by unknown authority` | The cluster does not trust the endpoint certificate. Set `prometheus.server.caFile` to your CA bundle |
+| `context deadline exceeded`, `i/o timeout` | Egress to the endpoint is blocked. Allow outbound 443 to `app.bluebill.io` |
+
+## Existing monitoring
+
+If the cluster already runs kube-state-metrics, a node exporter or a pushgateway, the
+duplicates can be switched off so the collector uses yours:
+
+```yaml
+prometheus:
+  kubeStateMetrics:
+    enabled: false
+  prometheus-node-exporter:
+    enabled: false
+  prometheus-pushgateway:
+    enabled: false
+```
+
+## Removing it
+
+```bash
+helm uninstall kube-cost-metrics-collector --namespace bluebill
+kubectl delete namespace bluebill
+```
